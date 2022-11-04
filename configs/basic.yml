@@ -1,0 +1,50 @@
+name: basic
+work_dir: ./output
+local_rank: -1
+
+model:
+  _type: UNet
+  in_channels: 3
+  out_channels: 3
+
+optimizer:
+  _type: Adam
+  lr: 1e-4
+
+loss:
+  weight:
+    l1: 1
+
+log:
+  evaluate:
+    interval_epoch: 1
+  checkpoint:
+    interval_epoch: 2
+  tensorboard:
+    scalar_interval: 100
+    image_interval: 2000
+
+train:
+  num_epoch: 50
+  dataset:
+    path: ./dataset
+    transform:
+      - ToTensor
+      - Resize:
+          size: 512
+  dataloader:
+    batch_size: 2
+    num_workers: 2
+    shuffle: True
+  
+evaluate:
+  dataset:
+    path: ./dataset
+    transform:
+      - ToTensor
+      - Resize:
+          size: 512
+  dataloader:
+    batch_size: 1
+    num_workers: 1
+  

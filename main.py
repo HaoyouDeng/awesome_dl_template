@@ -1,15 +1,15 @@
-from operator import xor
 import os
 import time
-from xml.etree.ElementPath import xpath_tokenizer_re
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
+import torchvision
 
 import tqdm
 import fire
 from typing import Iterable
+from collections import defaultdict
 from omegaconf import OmegaConf
 from pathlib import Path
 from loguru import logger
@@ -17,6 +17,7 @@ from loguru import logger
 import utils
 import networks
 import datasets
+from test import evaluate_fn
 
 
 def build_criterion(config, device):
@@ -60,11 +61,12 @@ def train(config):
 
     # define dataset & dataloader
     train_dataset = datasets.ImageDataset(**config.train.dataset)
-    # TODO: need to fix to multi gpus
     if config.local_rank == -1:
         train_dataloader = DataLoader(train_dataset, **config.train.dataloader)
     else:
-        train_dataloader = DataLoader(train_dataset, **config.train.dataloader)
+        sampler = DistributedSampler(train_dataset)
+        config.train.dataloader.shuffer = False
+        train_dataloader = DataLoader(train_dataset, sampler=sampler, **config.train.dataloader)
     mylog.info(
         f"build train_dataset over: {train_dataset}. with config {config.train.dataset}"
     )
@@ -102,6 +104,7 @@ def train(config):
     # bulid tensorboard writer
     tb_path = Path(config.work_dir) / f"tb_logs" / config.name
     tb_writer = utils.bulit_tbwriter(tb_path, config.local_rank)
+    running_scalars = defaultdict(float)
 
     for epoch in range(start_epoch, config.train.num_epoch + 1):
         epoch_start_time = time.time()
@@ -113,7 +116,7 @@ def train(config):
             total=len(train_dataloader),
             leave=False,
             ncols=120,
-        ):
+            ):
             x, gt = batch
             y = model(x)
 
@@ -130,6 +133,64 @@ def train(config):
             optimizer.step()
 
             # write log
+            if config.local_rank <= 0:
+                for k, v in loss.items():
+                    running_scalars[k] = running_scalars[k] + v.detach().mean().item()
+
+                global_step = (epoch - 1) * len(train_dataloader) + iteration
+
+                if global_step % config.log.tensorboard.scalar_interval == 0:
+                    tb_writer.add_scalar(
+                        "metric/total_loss", total_loss.detach().cpu().item(), global_step
+                    )
+                    for k in running_scalars:
+                        v = running_scalars[k] / config.log.tensorboard.scalar_interval
+                        running_scalars[k] = 0.0
+                        tb_writer.add_scalar(f"loss/{k}", v, global_step)
+
+                if global_step % config.log.tensorboard.image_interval == 0:
+                    images = utils.grid_transpose(
+                        [x, gt, y]
+                    )
+                    images = torchvision.utils.make_grid(
+                        images, nrow=3, value_range=(0, 1), normalize=True
+                    )
+                    tb_writer.add_image(
+                        f"train/combined|real_scene|pred_scene|real_flare|pred_flare",
+                        images,
+                        global_step,
+                    )
+        
+        # log for each epoch        
+        if config.local_rank <= 0:
+            mylog.info(
+                    f"EPOCH[{epoch}/{config.train.num_epoch}] END "
+                    f"Taken {(time.time() - epoch_start_time) / 60.0:.4f} min"
+                )
+
+            # save checkpoint
+            if epoch % config.log.checkpoint.interval_epoch == 0:
+                to_save = dict(
+                    model=model.state_dict(), optim=optimizer.state_dict(), epoch=epoch
+                )
+                torch.save(to_save, output_dir / f"epoch_{epoch:03d}.pt")
+                logger.info(f"save checkpoint at {output_dir / f'epoch_{epoch:03d}.pt'}")
+            # evaluate
+            if epoch % config.log.evaluate.interval_epoch == 0:
+                model.eval()
+                with torch.no_grad():
+                    metrics = evaluate_fn(
+                        config, evaluate_dataloader, device=device
+                    )
+                model.train()
+                logger.info(
+                    f"EPOCH[{epoch}/{config.train.num_epoch}] metrics "
+                    + "\t".join([f"{k}={v:.4f}" for k, v in metrics.items()])
+                )
+                for m, v in metrics.items():
+                    tb_writer.add_scalar(f"evaluate/{m}", v, epoch * len(train_dataloader))
+
+    logger.success(f"train over.")
     
 
 def main(config, *omega_options, gpus="all"):
