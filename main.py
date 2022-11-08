@@ -110,6 +110,8 @@ def train(config):
         epoch_start_time = time.time()
         logger.info(f"EPOCH[{epoch}/{config.train.num_epoch}] START")
         model.train()
+        if config.local_rank != -1:
+            train_dataloader.sampler.set_epoch(epoch)
 
         for iteration, batch in tqdm(
             enumerate(train_dataloader, 1),
