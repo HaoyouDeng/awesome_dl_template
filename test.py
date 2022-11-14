@@ -52,7 +52,7 @@ def evaluate(
     config = OmegaConf.load(config)
     model = init_model(config, resume_from, device)
 
-    evaluate_dataset = dataset.ImageDataset(**config.evaluate.dataset)
+    evaluate_dataset = datasets.ImageDataset(**config.evaluate.dataset)
     logger.info(f"build evaluate_dataset over: {evaluate_dataset}")
     logger.info(f"{len(evaluate_dataset)=}")
 
