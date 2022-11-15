@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 
-import tqdm
+from tqdm import tqdm
 import fire
 from typing import Iterable
 from collections import defaultdict
@@ -42,6 +42,9 @@ def train(config):
 
     # define output dir (checkpoints, logs)
     output_dir = Path(config.work_dir) / config.name / f"checkpoints"
+
+    if (config.local_rank<=0) and (not output_dir.exists()):
+        output_dir.mkdir(parents=True)
 
     # backup train config
     utils.backup_config(config, output_dir)

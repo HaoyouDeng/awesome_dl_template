@@ -27,7 +27,7 @@ log:
 train:
   num_epoch: 50
   dataset:
-    path: ./dataset
+    folders: ./dataset
     transform:
       - ToTensor
       - Resize:
@@ -39,7 +39,7 @@ train:
   
 evaluate:
   dataset:
-    path: ./dataset
+    folders: ./dataset
     transform:
       - ToTensor
       - Resize:
