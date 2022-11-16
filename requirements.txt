@@ -4,3 +4,4 @@ datetime
 omegaconf
 lmdb
 pathlib
+fire

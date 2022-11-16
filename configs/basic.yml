@@ -1,5 +1,6 @@
 name: basic
 work_dir: ./output
+tb_dir: None
 local_rank: -1
 
 model:
@@ -38,6 +39,17 @@ train:
     shuffle: True
   
 evaluate:
+  dataset:
+    folders: ./dataset
+    transform:
+      - ToTensor
+      - Resize:
+          size: 512
+  dataloader:
+    batch_size: 1
+    num_workers: 1
+  
+generate:
   dataset:
     folders: ./dataset
     transform:

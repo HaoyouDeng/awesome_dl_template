@@ -12,16 +12,6 @@ import utils
 import datasets
 
 
-def evaluate_fn(
-    config,
-    evaluate_dataloader,
-    model,
-    device,
-):
-    
-    return 0
-
-
 def init_model(
     config,
     resume_from,
@@ -41,6 +31,55 @@ def init_model(
     return model
 
 
+def evaluate_fn(
+    config,
+    model,
+    evaluate_dataloader,
+    device=torch.device("cuda"),
+):
+    
+    return 0
+
+
+def generate_fn(
+    config,
+    generator,
+    generator_dataloader,
+    output_folder,
+    device=torch.device("cuda"),
+):
+    return 0
+
+
+def generate(
+    config,
+    resume_from,
+    output_folder,
+    image_folder=None,
+    device=torch.device("cuda"),
+):
+    config = OmegaConf.load(config)
+    generator = init_model(config, resume_from, device)
+
+    if image_folder is not None:
+        config.generate.dataset.folders = [image_folder]
+    
+    generate_dataset = datasets.ImageDataset(**config.generate.dataset)
+    logger.info(f"build generate_dataset over: {generate_dataset}")
+    logger.info(f"len generate_dataset: {len(generate_dataset)}")
+
+    generator_dataloader = DataLoader(generate_dataset, **config.generate.dataloader)
+    logger.info(f"build generate_dataset with config: {config.generate.dataloader}")
+    
+    generate_fn(
+        config=config,
+        generator=generator,
+        generator_dataloader=generator_dataloader,
+        output_folder=output_folder,
+        device=device
+    )
+
+
 def evaluate(
     config,
     resume_from,
@@ -54,13 +93,13 @@ def evaluate(
 
     evaluate_dataset = datasets.ImageDataset(**config.evaluate.dataset)
     logger.info(f"build evaluate_dataset over: {evaluate_dataset}")
-    logger.info(f"{len(evaluate_dataset)=}")
+    logger.info(f"len evaluate: {len(evaluate_dataset)}")
 
     evaluate_dataloader = DataLoader(evaluate_dataset, **config.evaluate.dataloader)
     logger.info(f"build evaluate_dataloader with config: {config.evaluate.dataloader}")
 
     metrics = evaluate_fn(
-        config, evaluate_dataloader, model, device
+        config, model, evaluate_dataloader, device
     )
     logger.success(
         "evaluated metrics:\n"
@@ -72,4 +111,5 @@ if __name__ == "__main__":
     torch.set_grad_enabled(False)
     fire.Fire(dict(
         evaluate=evaluate,
+        generate=generate,
     ))

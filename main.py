@@ -68,12 +68,12 @@ def train(config):
         train_dataloader = DataLoader(train_dataset, **config.train.dataloader)
     else:
         sampler = DistributedSampler(train_dataset)
-        config.train.dataloader.shuffer = False
+        config.train.dataloader.shuffle = False
         train_dataloader = DataLoader(train_dataset, sampler=sampler, **config.train.dataloader)
     mylog.info(
         f"build train_dataset over: {train_dataset}. with config {config.train.dataset}"
     )
-    mylog.info(f"{len(train_dataset)=}")
+    mylog.info(f"len train_dataset: {len(train_dataset)}")
 
     evaluate_dataset = datasets.ImageDataset(**config.evaluate.dataset)
     evaluate_dataloader = DataLoader(evaluate_dataset, **config.evaluate.dataloader)
@@ -105,7 +105,10 @@ def train(config):
     criterion = build_criterion(config, device)
 
     # bulid tensorboard writer
-    tb_path = Path(config.work_dir) / f"tb_logs" / config.name
+    if config.tb_dir == "None":
+        tb_path = Path(config.work_dir) / config.name / f"tb_logs"
+    else:
+        tb_path = Path(config.tb_dir)
     tb_writer = utils.bulit_tbwriter(tb_path, config.local_rank)
     running_scalars = defaultdict(float)
 
@@ -161,7 +164,7 @@ def train(config):
                         images, nrow=3, value_range=(0, 1), normalize=True
                     )
                     tb_writer.add_image(
-                        f"train/combined|real_scene|pred_scene|real_flare|pred_flare",
+                        f"train/x|gt|y",
                         images,
                         global_step,
                     )
@@ -185,7 +188,7 @@ def train(config):
                 model.eval()
                 with torch.no_grad():
                     metrics = evaluate_fn(
-                        config, evaluate_dataloader, device=device
+                        config, model, evaluate_dataloader, device=device
                     )
                 model.train()
                 logger.info(
