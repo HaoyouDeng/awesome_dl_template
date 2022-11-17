@@ -2,8 +2,9 @@ import pickle
 import random
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable, Callable, Mapping
+from typing import Iterable, Callable, Mapping, MutableMapping
 from zipfile import ZipFile
+from copy import deepcopy
 
 import lmdb
 import numpy as np
@@ -62,7 +63,7 @@ def class_name_and_args(description):
 def pipeline(pipeline_description: Iterable) -> Callable:
     transforms_list = []
     for pd in pipeline_description:
-        transforms_list.append(utils.instantiate(torchvision.transforms, pd))
+        transforms_list.append(instantiate(torchvision.transforms, pd))
 
     return torchvision.transforms.Compose(transforms_list)
 
@@ -182,3 +183,4 @@ class ImageDataset(Dataset):
         if self.return_image_path:
             out["path"] = str(file_path)
         return out
+        

@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 import torchvision
 
-from tqdm import tqdm
 import fire
+from tqdm import tqdm
 from typing import Iterable
 from collections import defaultdict
 from omegaconf import OmegaConf
@@ -17,6 +17,7 @@ from loguru import logger
 import utils
 import networks
 import datasets
+import losses
 from test import evaluate_fn
 
 
@@ -32,6 +33,13 @@ def build_criterion(config, device):
         return (loss_weights.get(name, 0.0) > 0)
 
     criterion["l1"] = torch.nn.L1Loss().to(device) if valid_l("l1") else _empty_l
+    criterion["lpips"] = losses.LPIPSLoss().to(device) if valid_l("lpips") else _empty_l
+    criterion["ffl"] = losses.FocalFrequencyLoss().to(device) if valid_l("ffl") else _empty_l
+    criterion["perceptual"] = (
+        losses.PerceptualLoss(**config.loss.perceptual).to(device)
+        if valid_l("perceptual")
+        else _empty_l
+    )
 
     return criterion
 
