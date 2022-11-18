@@ -1,14 +1,14 @@
-from typing import Iterable, Callable, Mapping, MutableMapping
-
 import random
-import torch
+from typing import Mapping
+
 from torch.utils.data import Dataset
-from datasets import ImageDataset
+
+from datasets import VideoDataset
 
 
-class UnpairedDataset(Dataset):
+class UnpairedVideoDataset(Dataset):
     def __init__(
-        self, folders_a, folders_b, transform, recursive=False, return_image_path=False
+        self, folders_a, folders_b, clip_len, transform, recursive=True, return_image_path=False
     ):
         if isinstance(transform, Mapping):
             transform_a = transform["A"]
@@ -17,11 +17,11 @@ class UnpairedDataset(Dataset):
             transform_a = transform
             transform_b = transform
 
-        self.dataset_a = ImageDataset(
-            folders_a, transform_a, recursive, return_image_path
+        self.dataset_a = VideoDataset(
+            folders_a, clip_len, transform_a, recursive, return_image_path
         )
-        self.dataset_b = ImageDataset(
-            folders_b, transform_b, recursive, return_image_path
+        self.dataset_b = VideoDataset(
+            folders_b, clip_len, transform_b, recursive, return_image_path
         )
 
     def __len__(self):

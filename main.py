@@ -30,7 +30,9 @@ def build_criterion(config, device):
         return 0
 
     def valid_l(name):
-        return (loss_weights.get(name, 0.0) > 0)
+        return (
+            loss_weights.get(name, 0.0) > 0
+        )
 
     criterion["l1"] = torch.nn.L1Loss().to(device) if valid_l("l1") else _empty_l
     criterion["lpips"] = losses.LPIPSLoss().to(device) if valid_l("lpips") else _empty_l
@@ -64,7 +66,7 @@ def train(config):
     utils.init_weights(model)
     mylog.info( f"build generator over: {model.__class__.__name__}")
 
-    # bulid optimizer
+    # build optimizer
     optimizer = getattr(torch.optim, config.optimizer._type)(
         [p for p in model.parameters() if p.requires_grad], lr=config.optimizer.lr
     )
@@ -112,7 +114,7 @@ def train(config):
     # define criterion
     criterion = build_criterion(config, device)
 
-    # bulid tensorboard writer
+    # build tensorboard writer
     if config.tb_dir == "None":
         tb_path = Path(config.work_dir) / config.name / f"tb_logs"
     else:

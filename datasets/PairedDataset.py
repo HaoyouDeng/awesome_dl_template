@@ -1,5 +1,6 @@
 from datasets.UnpairedDataset import UnpairedDataset
 
+
 class PairedDataset(UnpairedDataset):
     def __init__(
         self, folders_a, folders_b, transform, recursive=False, return_image_path=False
